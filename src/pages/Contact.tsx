@@ -14,7 +14,7 @@ const Contact = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const response = await fetch(`${import.meta.env.BACKEND_URL || 'http://localhost:5000'}/api/contact-message`, {
+	const response = await fetch(`${import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000'}/api/contact-message`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -93,7 +93,7 @@ const Contact = () => {
       <section className="relative py-20 bg-gradient-to-r from-teal-600 via-blue-600 to-green-600">
         <div className="absolute inset-0">
           <img 
-            src="https://images.pexels.com/photos/7551726/pexels-photo-7551726.jpeg?auto=compress&cs=tinysrgb&w=1920"
+            src="/hero-contact.jpg"
             alt="Contact us"
             className="w-full h-full object-cover opacity-20"
           />

@@ -100,13 +100,13 @@ const OurWork = () => {
       name: "John Matiko",
       story: "The diabetes screening camp detected my condition early. With proper medication and support group participation, I'm managing my health well and living normally.",
       impact: "Early detection saved his life",
-      image: "/me.jpg"
+      image: "/JohnMatiko.jpg"
     },
     {
-      name: "Rose Nasieku",
+      name: "Rose Naieku",
       story: "As a teacher, I've seen dramatic improvements in student attendance and performance since the new sanitation facilities were built in our school.",
       impact: "Better learning environment",
-      image: "https://images.pexels.com/photos/1181712/pexels-photo-1181712.jpeg?auto=compress&cs=tinysrgb&w=200"
+      image: "/RoseNasieku.jpg"
     }
   ];
 
