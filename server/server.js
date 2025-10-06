@@ -25,111 +25,60 @@ app.use(
 );
 app.use(express.json());
 
-
 // Supabase admin client
 const supabase = createClient(
   process.env.SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
-
 // Flutterwave secret
 
 const FLW_SECRET = process.env.FLW_SECRET_KEY;
 
-
-
 // 1. Initiate Donation (create Flutterwave payment link)
 app.post("/api/donate", async (req, res) => {
+  const { donor, message } = req.body;
+
+  // Validate required field: email
+  if (!donor || !donor.email) {
+    return res.status(400).json({ error: "Missing donation email field." });
+  }
+
+  // Optional fields
+  const { name = null, phone = null, anonymous = false } = donor;
+
   try {
-    const { tx_ref, amount, currency, donor, message } = req.body;
-
-    if (!tx_ref || !amount || !currency || !donor?.email) {
-      return res
-        .status(400)
-        .json({ error: "Missing required donation fields" });
-    }
-
-    const payload = {
-      tx_ref,
-      amount,
-      currency,
-      redirect_url: `${
-        process.env.FRONTEND_ORIGIN || "http://localhost:5173"
-      }/donation-success`,
-      customer: {
-        email: donor.email,
-        name: donor.name,
-        phonenumber: donor.phone,
-      },
-      customizations: {
-        title: "Biotisho Kilimanjaro",
-        description: "Support our mission with your donation",
-      },
-      meta: {
-        message,
-        anonymous: donor.anonymous || false,
-      },
-    };
-    const response = await axios.post(
-      "https://api.flutterwave.com/v3/payments",
-      payload,
+    const { error } = await supabase.from("donations").insert([
       {
-        headers: {
-          Authorization: `Bearer ${FLW_SECRET}`,
-          "Content-Type": "application/json",
-        },
-      }
-    );
+        email: donor.email,
+        name,
+        phone,
+        message: message || null,
+        anonymous,
+      },
+    ]);
 
-    if (response.data?.status === "success") { 
-      await supabase.from("donations").insert({
-        flutterwave_tx_ref: tx_ref,
-        amount,
-        currency,
-        donor_email: donor.email,
-        donor_name: donor.name,
-        donor_phone: donor.phone,
-        status: "pending",
-        message,
-        anonymous: donor.anonymous || false,
-      });
-      return res.json({ link: response.data.data.link });
+    if (error) {
+      console.error("Supabase insert error:", error);
+      throw error;
     }
 
-    
-    return res.status(400).json({ error: "Failed to create payment link" });
+    return res.status(200).json({ success: true });
   } catch (err) {
-    console.error("💥 Payment error occurred:");
-    console.error("Error message:", err.message);
-    console.error("Error code:", err.code);
-    console.error("Error config URL:", err.config?.url);
-    console.error("Error config method:", err.config?.method);
-    console.error("Error config headers:", err.config?.headers);
-    if (err.response) {
-      console.error("Response status:", err.response.status);
-      console.error("Response data:", err.response.data);
-      console.error("Response headers:", err.response.headers);
-    } else if (err.request) {
-      console.error("Request made but no response received");
-      console.error("Request details:", err.request);
-    }
-    return res
-      .status(500)
-      .json({ error: err.response?.data?.message || err.message });
+    console.error("Donation error:", err);
+    return res.status(500).json({ error: "Server error. Please try again." });
   }
 });
-
 
 // 2. Verify and finalize donation
 
 app.post("/api/verify-payment", async (req, res) => {
   try {
-    const { tx_ref } = req.body || {}; 
+    const { tx_ref } = req.body || {};
 
     if (!tx_ref) {
       return res.status(400).json({ ok: false, error: "Missing tx_ref" });
-    } 
+    }
 
     const verifyUrl = `https://api.flutterwave.com/v3/transactions/verify_by_reference?tx_ref=${tx_ref}`;
     const fw = await axios.get(verifyUrl, {
@@ -142,9 +91,10 @@ app.post("/api/verify-payment", async (req, res) => {
       return res
         .status(502)
         .json({ ok: false, error: "Invalid verify response from Flutterwave" });
-    } 
-    const statusOk = v.status === "successful" && v.data?.status === "successful";
-    
+    }
+    const statusOk =
+      v.status === "successful" && v.data?.status === "successful";
+
     if (!statusOk) {
       await supabase
         .from("donations")
@@ -184,7 +134,6 @@ app.post("/api/verify-payment", async (req, res) => {
   }
 });
 
-
 // 3. Receive and store contact messages
 
 app.post("/api/contact-message", async (req, res) => {
@@ -210,7 +159,6 @@ app.post("/api/contact-message", async (req, res) => {
       return res.status(500).json({ error: "Failed to save message" });
     }
 
-    
     return res
       .status(200)
       .json({ success: true, message: "Message sent successfully!" });
@@ -220,40 +168,63 @@ app.post("/api/contact-message", async (req, res) => {
   }
 });
 
-
 // 4. Receive and store partnership inquiries
 
 app.post("/api/partner-inquiry", async (req, res) => {
   try {
-    const { organizationName, contactPerson, email, phone, organizationType, partnershipType, message } = req.body;
+    const {
+      organizationName,
+      contactPerson,
+      email,
+      phone,
+      organizationType,
+      partnershipType,
+      message,
+    } = req.body;
 
-    if (!organizationName || !contactPerson || !email || !phone || !organizationType || !partnershipType || !message) {
+    if (
+      !organizationName ||
+      !contactPerson ||
+      !email ||
+      !phone ||
+      !organizationType ||
+      !partnershipType ||
+      !message
+    ) {
       return res.status(400).json({ error: "Missing required fields" });
     }
 
-    const { data, error } = await supabase.from("partnership_inquiries").insert([
-      {
-        organization_name: organizationName,
-        contact_person: contactPerson,
-        email: email,
-        phone: phone,
-        organization_type: organizationType,
-        partnership_type: partnershipType,
-        message: message,
-      },
-    ]);
+    const { data, error } = await supabase
+      .from("partnership_inquiries")
+      .insert([
+        {
+          organization_name: organizationName,
+          contact_person: contactPerson,
+          email: email,
+          phone: phone,
+          organization_type: organizationType,
+          partnership_type: partnershipType,
+          message: message,
+        },
+      ]);
 
     if (error) {
       console.error("Supabase insert error:", error);
-      return res.status(500).json({ error: "Failed to save partnership inquiry" });
+      return res
+        .status(500)
+        .json({ error: "Failed to save partnership inquiry" });
     }
-    return res.status(200).json({ success: true, message: "Partnership inquiry sent successfully!" });
+    return res
+      .status(200)
+      .json({
+        success: true,
+        message: "Partnership inquiry sent successfully!",
+      });
   } catch (err) {
     console.error("Partnership inquiry error:", err);
     return res.status(500).json({ error: "Internal server error" });
   }
 });
-
 
 // Start server
 

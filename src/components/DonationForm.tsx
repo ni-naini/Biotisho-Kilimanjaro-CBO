@@ -1,58 +1,24 @@
 import React, { useState } from "react";
-import { Loader2, DollarSign } from "lucide-react";
+import { Loader2, Mail, MessageSquareHeart } from "lucide-react";
 
-// Preset donation amounts
-const PRESET_AMOUNTS = {
-  KES: [100, 3500, 2500, 1000, 4000, 5000],
-  USD: [5, 100, 200, 250, 3100, 1000],
-};
-
-
-const CURRENCY_SYMBOLS: Record<string, string> = {
-  KES: "KSh",
-  USD: "$",
-};
-
-// Backend URL from environment variable
+// Backend URL
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000";
 
+// Your hosted PayPal donation page
+const PAYPAL_DONATE_URL = "https://www.paypal.com/donate?hosted_button_id=ZQA7EYQNDX7YE";
+
 const DonationForm: React.FC = () => {
-  const [currency, setCurrency] = useState<"KES" | "USD">("KES");
-  const [selectedAmount, setSelectedAmount] = useState<number | null>(null);
-  const [customAmount, setCustomAmount] = useState<string>("");
-  const [donorName, setDonorName] = useState<string>("");
-  const [donorEmail, setDonorEmail] = useState<string>("");
-  const [donorPhone, setDonorPhone] = useState<string>("");
-  const [isAnonymous, setIsAnonymous] = useState<boolean>(false);
-  const [message, setMessage] = useState<string>("");
-  const [isLoading, setIsLoading] = useState<boolean>(false);
-
-  const getCurrencySymbol = () => CURRENCY_SYMBOLS[currency] || "";
-
-  const handlePresetAmountClick = (amount: number) => {
-    setSelectedAmount(amount);
-    setCustomAmount("");
-  };
-
-  const handleCustomAmountChange = (value: string) => {
-    setCustomAmount(value);
-    setSelectedAmount(null);
-  };
+  const [email, setEmail] = useState("");
+  const [name, setName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [message, setMessage] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleDonate = async () => {
-    const amount = selectedAmount || Number(customAmount);
-
-    if (!amount || amount <= 0) {
-      alert("Please select or enter a valid amount.");
+    if (!email.trim()) {
+      alert("Please enter your email.");
       return;
     }
-
-    if (!donorEmail.trim()) {
-      alert("Please provide your email.");
-      return;
-    }
-
-    const txRef = `BIOTISHO-${Date.now()}`;
 
     setIsLoading(true);
 
@@ -61,52 +27,28 @@ const DonationForm: React.FC = () => {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          tx_ref: txRef,
-          amount,
-          currency,
           donor: {
-            name: donorName,
-            email: donorEmail,
-            phone: donorPhone,
-            anonymous: isAnonymous,
+            email,
+            name,
+            phone,
           },
-          message: message.trim(),
+          message,
         }),
       });
 
-      
-      const data = await res.json().catch(() => null);
+      const data = await res.json();
 
       if (!res.ok) {
-        console.error("Donation error:", data);
-        
-        // specific error messages for common issues
-        if (data?.error === 'read ECONNRESET') {
-          alert("Connection lost to payment service. Please check your internet connection and try again.");
-        } else if (data?.error?.includes('ECONNRESET')) {
-          alert("Network connection interrupted. Please try again in a moment.");
-        } else if (data?.error?.includes('timeout')) {
-          alert("Request timed out. Please check your connection and try again.");
-        } else if (data?.error?.includes('ENOTFOUND')) {
-          alert("Unable to reach payment service. Please check your internet connection.");
-        } else {
-          alert(data?.error || "Could not start payment. Please try again.");
-        }
+        alert(data?.error || "Failed to save donation info. Try again.");
         return;
       }
 
-      if (data?.link) {
-        // Add a small delay to ensure console logs are visible
-        setTimeout(() => {
-          window.location.href = data.link;
-        }, 500);
-      } else {
-        console.error("No payment link received:", data);
-        alert("Payment link not received. Please try again.");
-      }
-    } catch (err) {
-      console.error("Donation error:", err);
-      alert("Something went wrong. Please check your network and try again.");
+      // Redirect to PayPal
+      window.location.href = PAYPAL_DONATE_URL;
+
+    } catch (error) {
+      console.error(error);
+      alert("Something went wrong. Please try again.");
     } finally {
       setIsLoading(false);
     }
@@ -114,107 +56,52 @@ const DonationForm: React.FC = () => {
 
   return (
     <form
-      className="max-w-lg mx-auto bg-white shadow-lg rounded-xl p-6 space-y-6"
+      className="max-w-lg mx-auto bg-white shadow-xl rounded-lg p-6 space-y-6"
       onSubmit={(e) => e.preventDefault()}
     >
-      <h2 className="text-2xl font-bold text-center text-green-700">
-        Make an Impact
-      </h2>
+      <h2 className="text-3xl font-bold text-center text-green-700">Support Our Mission</h2>
+      <p className="text-center text-gray-600 mb-4">
+        Your support creates lasting impact. 💚
+      </p>
 
-      {/* Currency Selector */}
-      <div className="flex justify-center space-x-4 mb-4">
-        {(["KES", "USD"] as const).map((cur) => (
-          <button
-            key={cur}
-            type="button"
-            onClick={() => setCurrency(cur)}
-            className={`px-4 py-2 rounded-lg border ${
-              currency === cur
-                ? "bg-green-600 text-white border-green-600"
-                : "bg-white text-gray-800 border-gray-300 hover:bg-gray-100"
-            }`}
-          >
-            {cur}
-          </button>
-        ))}
-      </div>
-
-      {/* Preset Amounts */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-        {PRESET_AMOUNTS[currency].map((amount) => (
-          <button
-            key={amount}
-            type="button"
-            onClick={() => handlePresetAmountClick(amount)}
-            className={`px-4 py-2 rounded-lg border ${
-              selectedAmount === amount
-                ? "bg-green-600 text-white border-green-600"
-                : "bg-white text-gray-800 border-gray-300 hover:bg-gray-100"
-            }`}
-          >
-            {getCurrencySymbol()}
-            {amount}
-          </button>
-        ))}
-      </div>
-
-      {/* Custom Amount */}
+      {/* Email (required) */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
-          Or enter custom amount
-        </label>
+        <label className="block text-sm font-medium text-gray-700 mb-1">Email *</label>
         <input
-          type="number"
-          min="1"
-          value={customAmount}
-          onChange={(e) => handleCustomAmountChange(e.target.value)}
-          className="w-full px-4 py-2 border rounded-lg focus:ring-green-500 focus:border-green-500"
-          placeholder="Enter amount"
+          type="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          required
+          className="w-full px-4 py-2 border rounded-lg"
+          placeholder="you@example.com"
         />
       </div>
 
-      {/* Donor Details */}
+      {/* Optional Fields */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
+        <label className="block text-sm font-medium text-gray-700 mb-1">Name (optional)</label>
         <input
           type="text"
-          value={donorName}
-          onChange={(e) => setDonorName(e.target.value)}
+          value={name}
+          onChange={(e) => setName(e.target.value)}
           className="w-full px-4 py-2 border rounded-lg"
           placeholder="Your name"
         />
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Email *</label>
-        <input
-          type="email"
-          value={donorEmail}
-          onChange={(e) => setDonorEmail(e.target.value)}
-          className="w-full px-4 py-2 border rounded-lg"
-          placeholder="you@example.com"
-          required
-        />
-      </div>
-
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
-          Phone (optional)
-        </label>
+        <label className="block text-sm font-medium text-gray-700 mb-1">Phone (optional)</label>
         <input
           type="tel"
-          value={donorPhone}
-          onChange={(e) => setDonorPhone(e.target.value)}
+          value={phone}
+          onChange={(e) => setPhone(e.target.value)}
           className="w-full px-4 py-2 border rounded-lg"
           placeholder="+254 7XX XXX XXX"
         />
       </div>
 
-      {/* Message */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
-          Message (optional)
-        </label>
+        <label className="block text-sm font-medium text-gray-700 mb-1">Message (optional)</label>
         <textarea
           value={message}
           onChange={(e) => setMessage(e.target.value)}
@@ -223,21 +110,7 @@ const DonationForm: React.FC = () => {
         />
       </div>
 
-      {/* Anonymous */}
-      <div className="flex items-center space-x-2">
-        <input
-          type="checkbox"
-          checked={isAnonymous}
-          onChange={(e) => setIsAnonymous(e.target.checked)}
-          id="anonymous"
-          className="h-4 w-4"
-        />
-        <label htmlFor="anonymous" className="text-sm text-gray-700">
-          Make my donation anonymous
-        </label>
-      </div>
-
-      {/* Donate Button */}
+      {/* Submit */}
       <div className="text-center">
         <button
           type="button"
@@ -248,12 +121,12 @@ const DonationForm: React.FC = () => {
           {isLoading ? (
             <>
               <Loader2 className="w-5 h-5 animate-spin mr-2" />
-              Processing...
+              Redirecting...
             </>
           ) : (
             <>
-              <DollarSign className="w-5 h-5 mr-2" />
-              Donate Now
+              <MessageSquareHeart className="w-5 h-5 mr-2" />
+              Donate with PayPal
             </>
           )}
         </button>
