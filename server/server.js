@@ -11,10 +11,6 @@ if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
   process.exit(1);
 }
 
-if (!process.env.FLW_SECRET_KEY) {
-  console.error("❌ Missing Flutterwave secret key");
-  process.exit(1);
-}
 
 app.use(
   cors({
@@ -31,11 +27,7 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
-// Flutterwave secret
-
-const FLW_SECRET = process.env.FLW_SECRET_KEY;
-
-// 1. Initiate Donation (create Flutterwave payment link)
+// 1. Initiate Donation 
 app.post("/api/donate", async (req, res) => {
   const { donor, message } = req.body;
 
@@ -70,69 +62,33 @@ app.post("/api/donate", async (req, res) => {
   }
 });
 
-// 2. Verify and finalize donation
 
-app.post("/api/verify-payment", async (req, res) => {
-  try {
-    const { tx_ref } = req.body || {};
+// 2. Webhook to handle PayPal payment notifications
+app.post("/api/paypal/webhook", express.json(), async (req, res) => {
+  const webhookEvent = req.body;
 
-    if (!tx_ref) {
-      return res.status(400).json({ ok: false, error: "Missing tx_ref" });
-    }
+  console.log("🔔 PayPal Webhook Received:", webhookEvent.event_type);
 
-    const verifyUrl = `https://api.flutterwave.com/v3/transactions/verify_by_reference?tx_ref=${tx_ref}`;
-    const fw = await axios.get(verifyUrl, {
-      headers: { Authorization: `Bearer ${FLW_SECRET}` },
-    });
+  if (webhookEvent.event_type === "PAYMENT.SALE.COMPLETED") {
+    const sale = webhookEvent.resource;
+    const email = sale.payer.payer_info.email; 
 
-    const v = fw.data?.data;
-    if (!v) {
-      console.error("❌ Invalid verify response from Flutterwave:", fw.data);
-      return res
-        .status(502)
-        .json({ ok: false, error: "Invalid verify response from Flutterwave" });
-    }
-    const statusOk =
-      v.status === "successful" && v.data?.status === "successful";
-
-    if (!statusOk) {
-      await supabase
-        .from("donations")
-        .update({ status: "failed", flutterwave_tx_id: String(v.id || "N/A") })
-        .eq("flutterwave_tx_ref", tx_ref);
-
-      return res.status(400).json({
-        ok: false,
-        verified: false,
-        reason: "Payment not successful or invalid status",
-        flutterwave: v,
-      });
-    }
-
-    const { data, error } = await supabase
+    const { error } = await supabase
       .from("donations")
-      .update({ status: "successful", flutterwave_tx_id: String(v.id) })
-      .eq("flutterwave_tx_ref", tx_ref)
-      .select()
-      .single();
+      .update({ status: "completed" })
+      .eq("email", email); 
 
     if (error) {
-      console.error("Supabase update error:", error);
-      return res.status(500).json({ ok: false, error: error.message });
+      console.error("❌ Failed to update donation status:", error);
+      return res.status(500).json({ error: "Database update failed" });
     }
-    return res.json({
-      ok: true,
-      verified: true,
-      donation: data,
-      flutterwave: v,
-    });
-  } catch (err) {
-    const msg =
-      err.response?.data?.message || err.response?.data || err.message;
-    console.error("💥 Verify error:", msg);
-    return res.status(500).json({ ok: false, error: msg });
+
+    console.log("✅ Donation marked as completed for:", email);
   }
+
+  res.sendStatus(200);
 });
+
 
 // 3. Receive and store contact messages
 
