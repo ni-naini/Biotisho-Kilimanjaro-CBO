@@ -150,12 +150,13 @@ const GetInvolved = () => {
                 Support our WASH and NCDs programs with financial contributions
                 that directly fund community health initiatives.
               </p>
-              <a
-                href="/donate"
+
+              <Link
+                to="/donate"
                 className="inline-flex items-center text-red-500 font-semibold hover:text-red-600 transition-colors"
               >
                 Make a Donation <ArrowRight className="ml-2 w-4 h-4" />
-              </a>
+              </Link>
             </div>
 
             <div className="text-center">
