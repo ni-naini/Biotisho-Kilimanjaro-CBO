@@ -193,8 +193,21 @@ const GetInvolved = () => {
 
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
             {donationImpacts.map((item, index) => (
-              <a
-                href="/donate"
+              // <a
+              //   href="/donate"
+              //   key={index}
+              //   className="block bg-gray-50 rounded-2xl p-6 text-center hover:shadow-lg transition-shadow"
+              // >
+              //   <div className="flex justify-center mb-4">{item.icon}</div>
+              //   <div className="text-2xl font-bold text-gray-900 mb-2">
+              //     {item.amount}
+              //   </div>
+              //   <p className="text-gray-600 text-sm leading-relaxed">
+              //     {item.impact}
+              //   </p>
+              // </a>
+              <Link
+                to="/donate"
                 key={index}
                 className="block bg-gray-50 rounded-2xl p-6 text-center hover:shadow-lg transition-shadow"
               >
@@ -205,7 +218,7 @@ const GetInvolved = () => {
                 <p className="text-gray-600 text-sm leading-relaxed">
                   {item.impact}
                 </p>
-              </a>
+              </Link>
             ))}
           </div>
         </div>
