@@ -122,7 +122,7 @@ const GetInvolved = () => {
       <section className="relative py-20 bg-gradient-to-r from-orange-500 via-red-500 to-pink-500">
         <div className="absolute inset-0">
           <img
-            src="https://images.pexels.com/photos/6994993/pexels-photo-6994993.jpeg?auto=compress&cs=tinysrgb&w=1920"
+            src="/.jpg"
             alt="Get involved"
             className="w-full h-full object-cover opacity-20"
           />
