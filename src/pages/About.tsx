@@ -91,7 +91,7 @@ const About = () => {
       year: "2019",
       title: "First Programs",
       description: "Launched initial WASH education programs and began NCDs awareness campaigns in local communities.",
-      image: "/1stProgram.png"
+      image: "/1stProgram.jpg"
     },
     {
       year: "2021",
