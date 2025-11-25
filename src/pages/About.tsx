@@ -85,7 +85,7 @@ const About = () => {
       year: "2017",
       title: "Foundation",
       description: "Biotisho Kilimanjaro CBO was founded by trained community health promoters from Isinet health unit.",
-      image: "/foundation.jpg"
+      image: "/ourfoundation.jpg"
     },
     {
       year: "2019",
